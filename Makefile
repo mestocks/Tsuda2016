@@ -88,46 +88,63 @@ $(NXT)/PaBasicStats.txt:
 # compute -s -i 'data/nxtgen/Pa_*fsa' | awk ' { print substr($1,13,9),$2,$4,$5,$6,$12,$13,$14 } '
 
 .PHONY:	runSims
-runSims:	$(SIM)/PaSnmSims.gz $(NXT)/PaSnmPrior.txt
+runSims:	$(SIM)/PaSnmSims.gz $(NXT)/PaBnmInput.txt $(NXT)/PaSnmMSseeds.txt $(NXT)/PaBnmMSseeds.txt
 
 niter = 100000
 # nseeds = niter * nloci
-nseeds = 2400000
+nseedsPa = 2400000
 
 $(SIM)/PaSnmSims.gz:	$(NXT)/PaSnmInput.txt
-	ms tbs $(nseeds) -seeds tbs tbs tbs -t tbs -r tbs tbs < $^ | gzip > $@
+	ms tbs $(nseedsPa) -seeds tbs tbs tbs -t tbs -r tbs tbs < $^ | gzip > $@
 
-$(NXT)/PaSnmInput.txt:	$(NXT)/PaStatsPriorSeeds.txt
-	awk ' { print $$1,$$5,$$6,$$7,$$3*$$2,$$4*$$2,$$2 } ' $^ > $@
+$(SIM)/PaBnmSims.gz:	$(NXT)/PaBnmInput.txt
+	ms tbs $(nseedsPa) -seeds tbs tbs tbs -t tbs -r tbs tbs -eN tbs tbs -eN tbs 1 < $^ | gzip > $@
 
-$(NXT)/PaStatsPriorSeeds.txt:	$(NXT)/PaBasicFsaInfo.txt $(NXT)/PaSnmPrior.txt $(NXT)/PaStatsPrior.txt $(NXT)/PaSnmSeeds.txt
+# Combine stats, seeds and priors distributions in one file.
+# SNM
+$(NXT)/%SnmInput.txt:	$(NXT)/%SnmStatsPriorSeeds.txt
+	awk ' { print $$1,$$3,$$4,$$5,$$6*$$2,$$7*$$2,$$2 } ' $^ > $@
+
+# BNM
+$(NXT)/%BnmInput.txt:	$(NXT)/%BnmStatsPriorSeeds.txt
+	awk ' { print $$1,$$3,$$4,$$5,$$6*$$2,$$7*$$2,$$2,$$8,$$9,$$9+0.2 } ' $^ > $@
+
+# SNM,BNM,EXP
+$(NXT)/%StatsPriorSeeds.txt:	$(NXT)/%BasicFsaInfo.txt $(NXT)/%MSseeds.txt $(NXT)/%Prior.txt
 	paste -d " " $^ > $@
 
-# Combine priors for each model
+# Combine prior distributions into one file for each model.
 $(NXT)/%SnmPrior.txt:	$(NXT)/%SnmTheta.txt $(NXT)/%SnmRho.txt
 	paste -d " " $^ > $@
 
-$(NXT)/%BnmPrior.txt:	$(NXT)/%BnmTheta.txt $(NXT)/%BnmRho.txt $(NXT)/%BnmTc.txt
+$(NXT)/%BnmPrior.txt:	$(NXT)/%BnmTheta.txt $(NXT)/%BnmRho.txt $(NXT)/%BnmTc.txt $(NXT)/%BnmNb.txt
 	paste -d " " $^ > $@
 
 
-## abies
+### abies ###
+
 # Randomly generate priors
 $(NXT)/Pa%Theta.txt:
-	rawk runif -m 0 -n 0.02 $(nseeds) > $@
+	rawk runif -m 0 -n 0.02 $(nseedsPa) > $@
 
 $(NXT)/Pa%Rho.txt:
-	rawk runif -m 0 -n 0.01 $(nseeds) > $@
+	rawk runif -m 0 -n 0.01 $(nseedsPa) > $@
 
 $(NXT)/Pa%Tc.txt:
-	rawk runif -m 0 -n 2 $(nseeds) > $@
+	rawk runif -m 0 -n 2 $(nseedsPa) > $@
 
-$(NXT)/Pa%Seeds.txt:
-	msrand -n $(nseeds) > $@
+$(NXT)/Pa%Nb.txt:
+	rawk runif -m 0 -n 1 $(nseedsPa) > $@
 
-$(NXT)/PaBasicFsaInfo.txt:	$(Pa_loci)
+# Generate ms seeds.
+$(NXT)/Pa%MSseeds.txt:
+	msrand -n $(nseedsPa) > $@
+
+# Ger the number of samples and sequence length.
+$(NXT)/Pa%BasicFsaInfo.txt:	$(Pa_loci)
 	python basicFsaInfo.py $^ | rawk rep $(niter) > $@
 
+### obovata ###
 
 ####################
 # SNP/genotype calling
