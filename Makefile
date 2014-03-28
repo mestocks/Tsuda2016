@@ -88,7 +88,7 @@ $(NXT)/PaBasicStats.txt:
 # compute -s -i 'data/nxtgen/Pa_*fsa' | awk ' { print substr($1,13,9),$2,$4,$5,$6,$12,$13,$14 } '
 
 .PHONY:	runSims
-runSims:	$(SIM)/PaSnmSims.gz
+runSims:	$(SIM)/PaSnmSims.gz $(NXT)/PaSnmPrior.txt
 
 niter = 100000
 # nseeds = niter * nloci
@@ -106,16 +106,26 @@ $(NXT)/PaStatsPriorSeeds.txt:	$(NXT)/PaStatsPrior.txt $(NXT)/PaSnmSeeds.txt
 $(NXT)/PaStatsPrior.txt:	$(NXT)/PaBasicFsaInfo.txt $(NXT)/PaSnmPrior.txt
 	rawk cbind $^ > $@
 
-$(NXT)/PaSnmPrior.txt:	$(NXT)/PaSnmTheta.txt $(NXT)/PaSnmRho.txt
+# Combine priors for each model
+$(NXT)/%SnmPrior.txt:	$(NXT)/%SnmTheta.txt $(NXT)/%SnmRho.txt
 	rawk cbind $^ > $@
 
-$(NXT)/PaSnmTheta.txt:
-	rawk runif -m 0 -n 0.02 2400000 > $@
+$(NXT)/%BnmPrior.txt:	$(NXT)/%BnmTheta.txt $(NXT)/%BnmRho.txt
+	rawk cbind $^ > $@
 
-$(NXT)/PaSnmRho.txt:
-	rawk runif -m 0 -n 0.01 2400000 > $@
 
-$(NXT)/PaSnmSeeds.txt:
+## abies
+# Randomly generate priors
+$(NXT)/Pa%Theta.txt:
+	rawk runif -m 0 -n 0.02 $(nseeds) > $@
+
+$(NXT)/Pa%Rho.txt:
+	rawk runif -m 0 -n 0.01 $(nseeds) > $@
+
+$(NXT)/Pa%Tc.txt:
+	rawk runif -m 0 -n 2 $(nseeds) > $@
+
+$(NXT)/Pa%Seeds.txt:
 	msrand -n $(nseeds) > $@
 
 $(NXT)/PaBasicFsaInfo.txt:	$(Pa_loci)
