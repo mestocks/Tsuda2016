@@ -100,18 +100,15 @@ $(SIM)/PaSnmSims.gz:	$(NXT)/PaSnmInput.txt
 $(NXT)/PaSnmInput.txt:	$(NXT)/PaStatsPriorSeeds.txt
 	awk ' { print $$1,$$5,$$6,$$7,$$3*$$2,$$4*$$2,$$2 } ' $^ > $@
 
-$(NXT)/PaStatsPriorSeeds.txt:	$(NXT)/PaStatsPrior.txt $(NXT)/PaSnmSeeds.txt
-	rawk cbind $^ > $@
-
-$(NXT)/PaStatsPrior.txt:	$(NXT)/PaBasicFsaInfo.txt $(NXT)/PaSnmPrior.txt
-	rawk cbind $^ > $@
+$(NXT)/PaStatsPriorSeeds.txt:	$(NXT)/PaBasicFsaInfo.txt $(NXT)/PaSnmPrior.txt $(NXT)/PaStatsPrior.txt $(NXT)/PaSnmSeeds.txt
+	paste -d " " $^ > $@
 
 # Combine priors for each model
 $(NXT)/%SnmPrior.txt:	$(NXT)/%SnmTheta.txt $(NXT)/%SnmRho.txt
-	rawk cbind $^ > $@
+	paste -d " " $^ > $@
 
-$(NXT)/%BnmPrior.txt:	$(NXT)/%BnmTheta.txt $(NXT)/%BnmRho.txt
-	rawk cbind $^ > $@
+$(NXT)/%BnmPrior.txt:	$(NXT)/%BnmTheta.txt $(NXT)/%BnmRho.txt $(NXT)/%BnmTc.txt
+	paste -d " " $^ > $@
 
 
 ## abies
