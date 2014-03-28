@@ -88,7 +88,7 @@ $(NXT)/PaBasicStats.txt:
 # compute -s -i 'data/nxtgen/Pa_*fsa' | awk ' { print substr($1,13,9),$2,$4,$5,$6,$12,$13,$14 } '
 
 .PHONY:	runSims
-runSims:	$(SIM)/PaSnmSims.gz $(NXT)/PaBnmInput.txt $(NXT)/PaSnmMSseeds.txt $(NXT)/PaBnmMSseeds.txt
+runSims:	$(SIM)/PaSnmSims.gz $(SIM)/PaBnmSims.gz $(NXT)/PaSnmMSseeds.txt $(NXT)/PaBnmMSseeds.txt
 
 niter = 100000
 # nseeds = niter * nloci
