@@ -88,7 +88,7 @@ $(NXT)/PaBasicStats.txt:
 # compute -s -i 'data/nxtgen/Pa_*fsa' | awk ' { print substr($1,13,9),$2,$4,$5,$6,$12,$13,$14 } '
 
 .PHONY:	runSims
-runSims:	$(SIM)/PaSnmSims.gz $(SIM)/PaBnmSims.gz $(NXT)/PaSnmMSseeds.txt $(NXT)/PaBnmMSseeds.txt
+runSims:	$(SIM)/PaSnmSims.gz $(SIM)/PaBnmSims.gz $(SIM)/PaExpSims.gz $(NXT)/PaSnmMSseeds.txt $(NXT)/PaBnmMSseeds.txt $(NXT)/PaExpMSseeds.txt
 
 niter = 100000
 # nseeds = niter * nloci
@@ -100,6 +100,9 @@ $(SIM)/PaSnmSims.gz:	$(NXT)/PaSnmInput.txt
 $(SIM)/PaBnmSims.gz:	$(NXT)/PaBnmInput.txt
 	ms tbs $(nseedsPa) -seeds tbs tbs tbs -t tbs -r tbs tbs -eN tbs tbs -eN tbs 1 < $^ | gzip > $@
 
+$(SIM)/PaExpSims.gz:	$(NXT)/PaExpInput.txt
+	ms tbs $(nseedsPa) -seeds tbs tbs tbs -t tbs -r tbs tbs -G tbs < $^ | gzip > $@
+
 # Combine stats, seeds and priors distributions in one file.
 # SNM
 $(NXT)/%SnmInput.txt:	$(NXT)/%SnmStatsPriorSeeds.txt
@@ -108,6 +111,10 @@ $(NXT)/%SnmInput.txt:	$(NXT)/%SnmStatsPriorSeeds.txt
 # BNM
 $(NXT)/%BnmInput.txt:	$(NXT)/%BnmStatsPriorSeeds.txt
 	awk ' { print $$1,$$3,$$4,$$5,$$6*$$2,$$7*$$2,$$2,$$8,$$9,$$9+0.2 } ' $^ > $@
+
+# EXP
+$(NXT)/%ExpInput.txt:	$(NXT)/%ExpStatsPriorSeeds.txt
+	awk ' { print $$1,$$3,$$4,$$5,$$6*$$2,$$7*$$2,$$2,$$8 } ' $^ > $@
 
 # SNM,BNM,EXP
 $(NXT)/%StatsPriorSeeds.txt:	$(NXT)/%BasicFsaInfo.txt $(NXT)/%MSseeds.txt $(NXT)/%Prior.txt
@@ -120,6 +127,8 @@ $(NXT)/%SnmPrior.txt:	$(NXT)/%SnmTheta.txt $(NXT)/%SnmRho.txt
 $(NXT)/%BnmPrior.txt:	$(NXT)/%BnmTheta.txt $(NXT)/%BnmRho.txt $(NXT)/%BnmTc.txt $(NXT)/%BnmNb.txt
 	paste -d " " $^ > $@
 
+$(NXT)/%ExpPrior.txt:	$(NXT)/%ExpTheta.txt $(NXT)/%ExpRho.txt $(NXT)/%ExpAlpha.txt
+	paste -d " " $^ > $@
 
 ### abies ###
 
@@ -134,6 +143,9 @@ $(NXT)/Pa%Tc.txt:
 	rawk runif -m 0 -n 2 $(nseedsPa) > $@
 
 $(NXT)/Pa%Nb.txt:
+	rawk runif -m 0 -n 1 $(nseedsPa) > $@
+
+$(NXT)/Pa%Alpha.txt:
 	rawk runif -m 0 -n 1 $(nseedsPa) > $@
 
 # Generate ms seeds.
