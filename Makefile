@@ -7,6 +7,10 @@ REF = data/reference
 SIM = data/sims
 SCR = scripts
 FIG = scripts
+MSIN = $(SIM)/msin
+MSOUT = $(SIM)/msout
+PRIOR = $(SIM)/prior
+RAND = $(SIM)/rand
 
 PAVY = pavy2012_REF.fsa
 
@@ -88,72 +92,87 @@ $(NXT)/PaBasicStats.txt:
 # compute -s -i 'data/nxtgen/Pa_*fsa' | awk ' { print substr($1,13,9),$2,$4,$5,$6,$12,$13,$14 } '
 
 .PHONY:	runSims
-runSims:	$(SIM)/PaSnmSims.gz $(SIM)/PaBnmSims.gz $(SIM)/PaExpSims.gz $(NXT)/PaSnmMSseeds.txt $(NXT)/PaBnmMSseeds.txt $(NXT)/PaExpMSseeds.txt
+runSims:	$(MSOUT)/Pa_SnmSims.gz $(MSOUT)/Pa_BnmSims.gz $(MSOUT)/Pa_ExpSims.gz $(RAND)/Pa_SnmMSseeds.txt $(RAND)/Pa_BnmMSseeds.txt $(RAND)/Pa_ExpMSseeds.txt
 
 niter = 100000
 # nseeds = niter * nloci
 nseedsPa = 2400000
+nseedsPaPo = 
 
-$(SIM)/PaSnmSims.gz:	$(NXT)/PaSnmInput.txt
+$(MSOUT)/Pa_SnmSims.gz:	$(MSIN)/Pa_SnmInput.txt
 	ms tbs $(nseedsPa) -seeds tbs tbs tbs -t tbs -r tbs tbs < $^ | gzip > $@
 
-$(SIM)/PaBnmSims.gz:	$(NXT)/PaBnmInput.txt
+$(MSOUT)/Pa_BnmSims.gz:	$(MSIN)/Pa_BnmInput.txt
 	ms tbs $(nseedsPa) -seeds tbs tbs tbs -t tbs -r tbs tbs -eN tbs tbs -eN tbs 1 < $^ | gzip > $@
 
-$(SIM)/PaExpSims.gz:	$(NXT)/PaExpInput.txt
+# Check alpha
+$(MSOUT)/Pa_ExpSims.gz:	$(MSIN)/Pa_ExpInput.txt
 	ms tbs $(nseedsPa) -seeds tbs tbs tbs -t tbs -r tbs tbs -G tbs < $^ | gzip > $@
 
 # Combine stats, seeds and priors distributions in one file.
 # SNM
-$(NXT)/%SnmInput.txt:	$(NXT)/%SnmStatsPriorSeeds.txt
+$(MSIN)/%SnmInput.txt:	$(SIM)/%SnmStatsPriorSeeds.txt
 	awk ' { print $$1,$$3,$$4,$$5,$$6*$$2,$$7*$$2,$$2 } ' $^ > $@
 
 # BNM
-$(NXT)/%BnmInput.txt:	$(NXT)/%BnmStatsPriorSeeds.txt
+$(MSIN)/%BnmInput.txt:	$(SIM)/%BnmStatsPriorSeeds.txt
 	awk ' { print $$1,$$3,$$4,$$5,$$6*$$2,$$7*$$2,$$2,$$8,$$9,$$9+0.2 } ' $^ > $@
 
 # EXP
-$(NXT)/%ExpInput.txt:	$(NXT)/%ExpStatsPriorSeeds.txt
+$(MSIN)/%ExpInput.txt:	$(SIM)/%ExpStatsPriorSeeds.txt
 	awk ' { print $$1,$$3,$$4,$$5,$$6*$$2,$$7*$$2,$$2,$$8 } ' $^ > $@
 
 # SNM,BNM,EXP
-$(NXT)/%StatsPriorSeeds.txt:	$(NXT)/%BasicFsaInfo.txt $(NXT)/%MSseeds.txt $(NXT)/%Prior.txt
+$(SIM)/%StatsPriorSeeds.txt:	$(SIM)/%BasicFsaInfo.txt $(RAND)/%MSseeds.txt $(PRIOR)/%Prior.txt
 	paste -d " " $^ > $@
 
 # Combine prior distributions into one file for each model.
-$(NXT)/%SnmPrior.txt:	$(NXT)/%SnmTheta.txt $(NXT)/%SnmRho.txt
+$(PRIOR)/%SnmPrior.txt:	$(PRIOR)/%SnmTheta.txt $(PRIOR)/%SnmRho.txt
 	paste -d " " $^ > $@
 
-$(NXT)/%BnmPrior.txt:	$(NXT)/%BnmTheta.txt $(NXT)/%BnmRho.txt $(NXT)/%BnmTc.txt $(NXT)/%BnmNb.txt
+$(PRIOR)/%BnmPrior.txt:	$(PRIOR)/%BnmTheta.txt $(PRIOR)/%BnmRho.txt $(PRIOR)/%BnmTc.txt $(PRIOR)/%BnmNb.txt
 	paste -d " " $^ > $@
 
-$(NXT)/%ExpPrior.txt:	$(NXT)/%ExpTheta.txt $(NXT)/%ExpRho.txt $(NXT)/%ExpAlpha.txt
+$(PRIOR)/%ExpPrior.txt:	$(PRIOR)/%ExpTheta.txt $(PRIOR)/%ExpRho.txt $(PRIOR)/%ExpAlpha.txt
 	paste -d " " $^ > $@
 
-### abies ###
+### Randomly generate priors ###
 
-# Randomly generate priors
-$(NXT)/Pa%Theta.txt:
+# abies
+$(PRIOR)/Pa_%Theta.txt:
 	rawk runif -m 0 -n 0.02 $(nseedsPa) > $@
 
-$(NXT)/Pa%Rho.txt:
+$(PRIOR)/Pa_%Rho.txt:
 	rawk runif -m 0 -n 0.01 $(nseedsPa) > $@
 
-$(NXT)/Pa%Tc.txt:
+$(PRIOR)/Pa_%Tc.txt:
 	rawk runif -m 0 -n 2 $(nseedsPa) > $@
 
-$(NXT)/Pa%Nb.txt:
+$(PRIOR)/Pa_%Nb.txt:
 	rawk runif -m 0 -n 1 $(nseedsPa) > $@
 
-$(NXT)/Pa%Alpha.txt:
+$(PRIOR)/Pa_%Alpha.txt:
 	rawk runif -m 0 -n 1 $(nseedsPa) > $@
+
+# abies-obovata
+$(PRIOR)/PaPo_%Theta.txt:
+	rawk runif -m 0 -n 0.02 $(nseedsPaPo) > $@
+
+$(PRIOR)/PaPo_%Rho.txt:
+	rawk runif -m 0 -n 0.01 $(nseedsPaPo) > $@
+
+$(PRIOR)/PaPo_%Split.txt:
+	rawk runif -m 0 -n 3 $(nseedsPaPo) > $@
 
 # Generate ms seeds.
-$(NXT)/Pa%MSseeds.txt:
+$(RAND)/PaPo_%MSseeds.txt:
 	msrand -n $(nseedsPa) > $@
 
 # Ger the number of samples and sequence length.
-$(NXT)/Pa%BasicFsaInfo.txt:	$(Pa_loci)
+$(SIM)/Pa_%BasicFsaInfo.txt:	$(Pa_loci)
+	python basicFsaInfo.py $^ | rawk rep $(niter) > $@
+
+$(SIM)/PaPo_%BasicFsaInfo.txt:	$(PaPo_loci)
 	python basicFsaInfo.py $^ | rawk rep $(niter) > $@
 
 ### obovata ###
