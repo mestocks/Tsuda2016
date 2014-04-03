@@ -181,6 +181,13 @@ $(SIM)/PaPo_%BasicFsaInfo.txt:	$(PaPo_loci)
 # SNP/genotype calling
 ####################
 
+# PaPo_can031.fsa - remove end
+# PaPo_can032.fsa - ignore locus
+# PaPo_can046.fsa - nothing aligned
+# PaPo_can077.fsa - not aligned
+# PaPo_can087.fsa - not aligned
+# PaPo_can089.fsa - not aligned
+# PaPo_can100.fsa - not aligned
 
 .PHONY:	callSNPs
 callSNPs:	$(Pa_loci) $(PaPo_loci) $(NXT)/inc_loci.txt
@@ -190,6 +197,8 @@ callSNPs:	$(Pa_loci) $(PaPo_loci) $(NXT)/inc_loci.txt
 # Cat and align Pa and Po alignments
 $(NXT)/PaPo_%.fsa:	$(NXT)/Pa_%.fsa $(NXT)/Po_%.fsa
 	cat $(NXT)/Pa_$*.fsa $(NXT)/Po_$*.fsa | muscle | sortfsa -f 70 > $@
+
+
 
 # Rename Po fasta IDs
 $(NXT)/Po_%.fsa:	$(NXT)/raw_Po/Po_%.fsa
