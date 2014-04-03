@@ -97,7 +97,7 @@ runSims:	$(MSOUT)/Pa_SnmSims.gz $(MSOUT)/Pa_BnmSims.gz $(MSOUT)/Pa_ExpSims.gz $(
 niter = 100000
 # nseeds = niter * nloci
 nseedsPa = 2400000
-nseedsPaPo = 
+nseedsPaPo = 2400000
 
 $(MSOUT)/Pa_SnmSims.gz:	$(MSIN)/Pa_SnmInput.txt
 	ms tbs $(nseedsPa) -seeds tbs tbs tbs -t tbs -r tbs tbs < $^ | gzip > $@
@@ -183,12 +183,12 @@ $(SIM)/PaPo_%BasicFsaInfo.txt:	$(PaPo_loci)
 
 
 .PHONY:	callSNPs
-callSNPs:	$(PaPo_loci) $(NXT)/inc_loci.txt $(NXT)/PaSnmSeeds.txt $(NXT)/PaBasicFsaInfo.txt 
+callSNPs:	$(Pa_loci) $(PaPo_loci) $(NXT)/inc_loci.txt
 
 #########
 
 # Cat and align Pa and Po alignments
-$(NXT)/PaPo_%.fsa:	$(NXT)/Po_%.fsa
+$(NXT)/PaPo_%.fsa:	$(NXT)/Pa_%.fsa $(NXT)/Po_%.fsa
 	cat $(NXT)/Pa_$*.fsa $(NXT)/Po_$*.fsa | muscle | sortfsa -f 70 > $@
 
 # Rename Po fasta IDs
@@ -198,22 +198,19 @@ $(NXT)/Po_%.fsa:	$(NXT)/raw_Po/Po_%.fsa
 $(NXT)/inc_loci.txt:	$(NXT)/pavy2012_A.vcf
 	ls -1 $(NXT)/Pa_can*.fsa | awk ' { print substr($$1,16,6) } ' > $@
 
-$(NXT)/$(PA_FSA):	$(NXT)/pavy2012_A.vcf.intermediate
+$(Pa_loci):	$(NXT)/pavy2012_A.vcf.intermediate
 .INTERMEDIATE:	$(NXT)/pavy2012_A.vcf.intermediate
 
 # Assess quality and print good sites to fasta format. The 
 # file 'exc_inds.txt' also includes a list of regular expressions 
 # that grep uses to exclude individuals or loci that don't contain 
 # enough samples or have too much missing data.
-$(NXT)/pavy2012_A.vcf.intermediate:	$(NXT)/pavy2012_A.vcf
-	vcf2fasta -d 8 -f 70 -o $(NXT)/ -p A -x $(NXT)/exc_inds.txt $^
+$(NXT)/pavy2012_A.vcf.intermediate:	$(NXT)/pavy2012_A.vcf $(NXT)/exc_inds.txt
+	vcf2fasta -d 8 -f 70 -o $(NXT)/ -p A -x $(NXT)/exc_inds.txt $<
 
 # Create pileup file with genotype likelihoods
 $(NXT)/pavy2012_A.vcf:	$(all_bam)
 	samtools mpileup -I -D -f $(REF)/$(PAVY) -g $^ | bcftools view -g - > $@
-
-
-
 
 ####################
 # Mapping
