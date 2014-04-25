@@ -173,7 +173,7 @@ $(SIM)/Pa_%AllBasicFsaInfo.txt:	$(Pa_loci)
 	python basicFsaInfo.py $^ | rawk rep $(niter) > $@
 
 $(SIM)/Pa_%SynBasicFsaInfo.txt:	$(Pa_loci)
-	python basicSynFsaInfo.py $^ | rawk rep $(niter) > $@
+	python basicSynFsaInfo.py -e $(NXT)/Pa_exons.txt $^ | rawk rep $(niter) > $@
 
 $(SIM)/PaPo_%BasicFsaInfo.txt:	$(PaPo_loci)
 	python basicFsaInfo.py $^ | rawk rep $(niter) > $@
