@@ -191,16 +191,6 @@ $(SIM)/PaPo_%BasicFsaInfo.txt:	$(PaPo_loci)
 # PaPo_can087.fsa - not aligned
 # PaPo_can089.fsa - not aligned
 # PaPo_can100.fsa - not aligned
-RCvalues = $(NXT)/Po_rc_can087.fsa $(NXT)/Po_rc_can089.fsa
-RCseqs = $(NXT)/raw_Po/Po_can087.fsa $(NXT)/raw_Po/Po_can089.fsa
-NAseqs = \
-$(NXT)/raw_Po/Po_can008.fsa 
-#$(NXT)/Po_can012.fsa $(NXT)/Po_can014.fsa $(NXT)/Po_can018.fsa\
-$(NXT)/Po_can022.fsa $(NXT)/Po_can024.fsa $(NXT)/Po_can028.fsa $(NXT)/Po_can031.fsa\
-$(NXT)/Po_can032.fsa $(NXT)/Po_can037.fsa $(NXT)/Po_can046.fsa $(NXT)/Po_can049.fsa\
-$(NXT)/Po_can056.fsa $(NXT)/Po_can058.fsa $(NXT)/Po_can060.fsa $(NXT)/Po_can062.fsa\
-$(NXT)/Po_can069.fsa $(NXT)/Po_can070.fsa $(NXT)/Po_can077.fsa $(NXT)/Po_can088.fsa\
-$(NXT)/Po_can092.fsa $(NXT)/Po_can100.fsa
 
 .PHONY:	callSNPs
 callSNPs:	$(Pa_loci) $(PaPo_loci) $(NXT)/inc_loci.txt 
@@ -211,33 +201,13 @@ callSNPs:	$(Pa_loci) $(PaPo_loci) $(NXT)/inc_loci.txt
 $(NXT)/PaPo_%.fsa:	$(NXT)/Pa_%.fsa $(NXT)/Po_%.fsa
 	cat $(NXT)/Pa_$*.fsa $(NXT)/Po_$*.fsa | muscle | sortfsa -f 70 > $@
 
-.PHONY:	test
-test:	$(NXT)/Po_can089.fsa
-
-$(NXT)/Po_can%.fsa:	$(NXT)/Po_rc_can%.fsa
-	echo "2rc"$^" > "$@
-
-$(NXT)/Po_can%.fsa:	$(NXT)/Po_na_can%.fsa
-	echo "2na"$^" > "$@
-
-#.PHONY:	revCmpPo
-#revPo:	$(RCseqs) $(NAseqs)
-
-#$(NXT)/Po_rc_%.fsa:	$(NXT)/raw_Po/Po_%.fsa
-#	nameFastaIDs -i $^ -p Po_$*_ | python revFsa.py | python cmpFsa.py > $@
-
-#$(NXT)/Po_na_%.fsa:	$(NXT)/raw_Po/Po_%.fsa
-#	nameFastaIDs -i $^ -p Po_$*_  > $@
-
-$(RCvalues):	$(RCseqs)
-	echo "1rc"$^" > "$@
-
-$(NXT)/Po_na_can*.fsa:	$(NAseqs)
-	echo "1rc"$^" > "$@
+# Reverse and complement some loci. The file data/nxtgen/rc_loci.txt lists these files.
+$(NXT)/Po_%.fsa:	$(NXT)/tmpPo_%.fsa
+	python rcFsa.py $(NXT)/rc_loci.txt $^ > $@
 
 # Rename Po fasta IDs
-#$(NXT)/Po_%.fsa:	$(NXT)/raw_Po/Po_%.fsa
-#	nameFastaIDs -i $^ -p Po_$*_ > $@
+$(NXT)/tmpPo_%.fsa:	$(NXT)/raw_Po/Po_%.fsa
+	nameFastaIDs -i $^ -p Po_$*_ > $@
 
 $(NXT)/inc_loci.txt:	$(NXT)/pavy2012_A.vcf
 	ls -1 $(NXT)/Pa_can*.fsa | awk ' { print substr($$1,16,6) } ' > $@
