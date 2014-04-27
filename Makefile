@@ -52,8 +52,8 @@ all_bam = $(addsuffix .bam,$(pavy2012_ids))
 all_bai = $(addsuffix .bai,$(all_bam))
 
 inc_loci = \
-can008 can012 can014 can018 can022 can024 can028 can031 can032 can037\
-can046 can049 can056 can058 can060 can062 can069 can070 can077 can087\
+can008 can012 can014 can018 can022 can024 can028 can031 can037\
+can049 can056 can058 can060 can062 can069 can070 can077 can087\
 can088 can089 can092 can100
 
 Pa_loci = $(addprefix $(NXT)/Pa_,$(addsuffix .fsa,$(inc_loci)))
@@ -172,6 +172,10 @@ $(RAND)/PaPo_%MSseeds.txt:
 $(SIM)/Pa_%AllBasicFsaInfo.txt:	$(Pa_loci)
 	python basicFsaInfo.py $^ | rawk rep $(niter) > $@
 
+##
+# list = [] <-:: file (locus exon1 exon1...) <-:: check  <-:: gff + pos correct
+##
+
 $(SIM)/Pa_%SynBasicFsaInfo.txt:	$(Pa_loci)
 	python basicSynFsaInfo.py -e $(NXT)/Pa_exons.txt $^ | rawk rep $(niter) > $@
 
@@ -185,12 +189,10 @@ $(SIM)/PaPo_%BasicFsaInfo.txt:	$(PaPo_loci)
 ####################
 
 # PaPo_can031.fsa - remove end
+
+# These 2 need to be removed:
 # PaPo_can032.fsa - ignore locus
 # PaPo_can046.fsa - nothing aligned
-# PaPo_can077.fsa - not aligned
-# PaPo_can087.fsa - not aligned
-# PaPo_can089.fsa - not aligned
-# PaPo_can100.fsa - not aligned
 
 .PHONY:	callSNPs
 callSNPs:	$(Pa_loci) $(PaPo_loci) $(NXT)/inc_loci.txt 
