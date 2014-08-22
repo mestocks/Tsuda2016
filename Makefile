@@ -59,16 +59,34 @@ can088 can089 can092 can100
 Pa_loci = $(addprefix $(NXT)/Pa_,$(addsuffix .fsa,$(inc_loci)))
 Po_loci = $(addprefix Po_,$(addsuffix .fsa,$(inc_loci)))
 PaPo_loci = $(addprefix $(NXT)/,$(addprefix Pa,$(Po_loci)))
-
+blast_Pa_loci = $(addprefix $(NXT)/blast_Pa_,$(addsuffix .txt,$(inc_loci)))
+match_Pa_loci = $(addprefix $(NXT)/match_Pa_,$(addsuffix .fsa,$(inc_loci)))
+match_Ref_loci = $(addprefix $(NXT)/match_Ref_,$(addsuffix .fsa,$(inc_loci)))
 
 ####################
 # Calculate observed statistics
 ####################
 
-.PHONY:	sumStats
-sumStats:	$(NXT)/PaBasicStats.txt $(NXT)/PoBasicStats.txt
+PaPoIsoStats = $(addprefix $(MSOUT)/PaPo_Iso_,$(addsuffix Stats.txt.gz,$(inc_loci)))
+PaPoIMStats = $(addprefix $(MSOUT)/PaPo_IM_,$(addsuffix Stats.txt.gz,$(inc_loci)))
 
-$(NXT)/PaBasicStats.txt:	
+.PHONY:	sumStats
+sumStats:	$(PaPoIsoStats) $(PaPoIMStats) $(MSOUT)/PaPoIsoMeanStats.txt $(MSOUT)/PaPoIMMeanStats.txt $(NXT)/PaPoObsStats.txt
+
+$(NXT)/PaPoObsStats.txt:	$(PaPo_loci)
+	python PaPoStats.py $^ > $@
+
+$(MSOUT)/PaPoIsoMeanStats.txt:	$(PaPoIsoStats)
+	zcat $^ | awk ' { L=$$2; for(i=3;i<=NF;i++) { N[L][i]++; S[L][i] += $$i } }; END { for (l in N) { printf l" "; for (j=3;j<=NF;j++) { printf S[l][j]/N[l][j]" "}; printf "\n"  }  } ' | sort -n > $@
+
+$(MSOUT)/PaPoIMMeanStats.txt:	$(PaPoIMStats)
+	zcat $^ | awk ' { L=$$2; for(i=3;i<=NF;i++) { N[L][i]++; S[L][i] += $$i } }; END { for (l in N) { printf l" "; for (j=3;j<=NF;j++) { printf S[l][j]/N[l][j]" "}; printf "\n"  }  } ' | sort -n > $@
+
+$(MSOUT)/PaPo_Iso_%Stats.txt.gz:	$(MSOUT)/PaPo_Iso_%sims.gz $(MSIN)/PaPo_Iso_%input.txt
+	zcat $(MSOUT)/PaPo_Iso_$*sims.gz | python PaPoMsStats.py $(MSIN)/PaPo_Iso_$*input.txt | gzip > $@
+
+$(MSOUT)/PaPo_IM_%Stats.txt.gz:	$(MSOUT)/PaPo_IM_%sims.gz $(MSIN)/PaPo_IM_%input.txt
+	zcat $(MSOUT)/PaPo_IM_$*sims.gz | python PaPoMsStats.py $(MSIN)/PaPo_IM_$*input.txt | gzip > $@
 
 
 ####################
@@ -91,13 +109,60 @@ $(NXT)/PaBasicStats.txt:
 # Basic stats
 # compute -s -i 'data/nxtgen/Pa_*fsa' | awk ' { print substr($1,13,9),$2,$4,$5,$6,$12,$13,$14 } '
 
+# e.g. $(msout)/PaPo_Iso_can008sims.gz
+PaPoIsoSims = $(addsuffix sims.gz,$(addprefix $(MSOUT)/PaPo_Iso_,$(inc_loci)))
+PaPoIMSims = $(addsuffix sims.gz,$(addprefix $(MSOUT)/PaPo_IM_,$(inc_loci)))
+PaPoInput = $(addsuffix input.txt,$(addprefix $(MSIN)/PaPo_Iso_,$(inc_loci)))
+
 .PHONY:	runSims
-runSims:	$(MSOUT)/Pa_SnmSims.gz $(MSOUT)/Pa_BnmSims.gz $(MSOUT)/Pa_ExpSims.gz $(RAND)/Pa_SnmMSseeds.txt $(RAND)/Pa_BnmMSseeds.txt $(RAND)/Pa_ExpMSseeds.txt
+runSims:	$(PaPoIsoSims) $(PaPoIMSims)
+#runSims:	$(MSOUT)/PaPo_IsoSims.gz
+#runSims:	$(MSOUT)/Pa_SnmSims.gz $(MSOUT)/Pa_BnmSims.gz $(MSOUT)/Pa_ExpSims.gz $(RAND)/Pa_SnmMSseeds.txt $(RAND)/Pa_BnmMSseeds.txt $(RAND)/Pa_ExpMSseeds.txt $(MSOUT)/PaPo_IsoSims.gz
 
 niter = 100000
 # nseeds = niter * nloci
 nseedsPa = 2400000
-nseedsPaPo = 2400000
+nseedsPaPo = 2200000
+nloci = 22
+
+### Split model ###
+
+# Do sims - ms nsam niter -t theta -r rho length -I npops n1 n2 -ej t i j
+$(MSOUT)/PaPo_Iso_%sims.gz:	$(MSIN)/PaPo_Iso_%input.txt
+	$(eval nsam := $(shell grep ">" -c $(NXT)/PaPo_$*.fsa))
+	ms $(nsam) $(niter) -seeds tbs tbs tbs -t tbs -r tbs tbs -I 2 tbs tbs -ej tbs 2 1 < $^ | gzip > $@
+
+$(MSOUT)/PaPo_IM_%sims.gz:	$(MSIN)/PaPo_IM_%input.txt
+	$(eval nsam := $(shell grep ">" -c $(NXT)/PaPo_$*.fsa))
+	ms $(nsam) $(niter) -seeds tbs tbs tbs -t tbs -r tbs tbs -I 2 tbs tbs tbs -ej tbs 2 1 < $^ | gzip > $@
+
+###   ###
+
+# Iso
+$(MSIN)/PaPo_Iso_%input.txt:	$(SIM)/PaPo_Iso_%StatsPriorSeeds.txt
+	awk ' { print $$5,$$6,$$7,$$8*$$2,$$9*$$2,$$2,$$3,$$4,$$10 } ' $^ > $@
+
+$(SIM)/PaPo_Iso_%StatsPriorSeeds.txt:	$(SIM)/PaPo_Iso_%BasicFsaInfo.txt $(RAND)/PaPo_Iso_%MSseeds.txt $(PRIOR)/PaPo_Iso_Prior.txt
+	paste -d " " $^ > $@
+
+# IM - ms nsam niter -t theta -r rho length -I npops n1 n2 m -ej t 2 1
+$(MSIN)/PaPo_IM_%input.txt:	$(SIM)/PaPo_IM_%StatsPriorSeeds.txt
+	awk ' { print $$5,$$6,$$7,$$8*$$2,$$9*$$2,$$2,$$3,$$4,$$11,$$10 } ' $^ > $@
+
+$(SIM)/PaPo_IM_%StatsPriorSeeds.txt:	$(SIM)/PaPo_IM_%BasicFsaInfo.txt $(RAND)/PaPo_IM_%MSseeds.txt $(PRIOR)/PaPo_IM_Prior.txt
+	paste -d " " $^ > $@
+
+### Concatenate prior files ###
+
+# Iso
+$(PRIOR)/PaPo_Iso_Prior.txt:	$(PRIOR)/PaPo_Iso_Theta.txt $(PRIOR)/PaPo_Iso_Rho.txt $(PRIOR)/PaPo_Iso_Split.txt
+	paste -d " " $^ | rawk rep $(nloci) > $@
+
+# IM
+$(PRIOR)/PaPo_IM_Prior.txt:	$(PRIOR)/PaPo_IM_Theta.txt $(PRIOR)/PaPo_IM_Rho.txt $(PRIOR)/PaPo_IM_Split.txt $(PRIOR)/PaPo_IM_Mig.txt
+	paste -d " " $^ | rawk rep $(nloci) > $@
+
+
 
 $(MSOUT)/Pa_SnmSims.gz:	$(MSIN)/Pa_SnmInput.txt
 	ms tbs $(nseedsPa) -seeds tbs tbs tbs -t tbs -r tbs tbs < $^ | gzip > $@
@@ -108,6 +173,12 @@ $(MSOUT)/Pa_BnmSims.gz:	$(MSIN)/Pa_BnmInput.txt
 # Check alpha
 $(MSOUT)/Pa_ExpSims.gz:	$(MSIN)/Pa_ExpInput.txt
 	ms tbs $(nseedsPa) -seeds tbs tbs tbs -t tbs -r tbs tbs -G tbs < $^ | gzip > $@
+
+# Split model
+# ms nsam niter -t theta -r rho length -I npops n1 n2 -ej t i j
+# nsam seed1 seed2 seed3 theta rho length n1 n2 t
+#$(MSOUT)/PaPo_IsoSims.gz:	$(MSIN)/PaPo_IsoInput.txt
+#	ms tbs 2 -seeds tbs tbs tbs -t tbs -r tbs tbs -I 2 tbs tbs -ej tbs 2 1 < $^ | gzip > $@
 
 # Combine stats, seeds and priors distributions in one file.
 # SNM
@@ -122,8 +193,15 @@ $(MSIN)/%BnmInput.txt:	$(SIM)/%BnmStatsPriorSeeds.txt
 $(MSIN)/%ExpInput.txt:	$(SIM)/%ExpStatsPriorSeeds.txt
 	awk ' { print $$1,$$3,$$4,$$5,$$6*$$2,$$7*$$2,$$2,$$8 } ' $^ > $@
 
+# Iso
+#$(MSIN)/%IsoInput.txt:	$(SIM)/%IsoStatsPriorSeeds.txt
+#	awk ' { print $$1,$$5,$$6,$$7,$$8*$$2,$$9*$$2,$$2,$$3,$$4,$$10 } ' $^ > $@
+
 # SNM,BNM,EXP
 $(SIM)/%StatsPriorSeeds.txt:	$(SIM)/%BasicFsaInfo.txt $(RAND)/%MSseeds.txt $(PRIOR)/%Prior.txt
+	paste -d " " $^ > $@
+
+$(SIM)/PaPo_%StatsPriorSeeds.txt:	$(SIM)/PaPo_%BasicFsaInfo.txt $(RAND)/PaPo_%MSseeds.txt $(PRIOR)/PaPo_%Prior.txt
 	paste -d " " $^ > $@
 
 # Combine prior distributions into one file for each model.
@@ -134,6 +212,9 @@ $(PRIOR)/%BnmPrior.txt:	$(PRIOR)/%BnmTheta.txt $(PRIOR)/%BnmRho.txt $(PRIOR)/%Bn
 	paste -d " " $^ > $@
 
 $(PRIOR)/%ExpPrior.txt:	$(PRIOR)/%ExpTheta.txt $(PRIOR)/%ExpRho.txt $(PRIOR)/%ExpAlpha.txt
+	paste -d " " $^ > $@
+
+$(PRIOR)/%IsoPrior.txt:	$(PRIOR)/%IsoTheta.txt $(PRIOR)/%IsoRho.txt $(PRIOR)/%IsoSplit.txt
 	paste -d " " $^ > $@
 
 ### Randomly generate priors ###
@@ -156,21 +237,27 @@ $(PRIOR)/Pa_%Alpha.txt:
 
 # abies-obovata
 $(PRIOR)/PaPo_%Theta.txt:
-	rawk runif -m 0 -n 0.02 $(nseedsPaPo) > $@
+	rawk runif -m 0 -n 0.02 $(niter) > $@
 
 $(PRIOR)/PaPo_%Rho.txt:
-	rawk runif -m 0 -n 0.01 $(nseedsPaPo) > $@
+	rawk runif -m 0 -n 0.01 $(niter) > $@
 
 $(PRIOR)/PaPo_%Split.txt:
-	rawk runif -m 0 -n 3 $(nseedsPaPo) > $@
+	rawk runif -m 0 -n 3 $(niter) > $@
+
+$(PRIOR)/PaPo_%Mig.txt:
+	rawk runif -m 0 -n 10 $(niter) > $@
 
 # Generate ms seeds.
 $(RAND)/PaPo_%MSseeds.txt:
-	msrand -n $(nseedsPa) > $@
+	msrand -n $(niter) > $@
 
-# Ger the number of samples and sequence length.
+# Get the number of samples and sequence length.
 $(SIM)/Pa_%AllBasicFsaInfo.txt:	$(Pa_loci)
 	python basicFsaInfo.py $^ | rawk rep $(niter) > $@
+
+$(SIM)/PaPo_%AllBasicFsaInfo.txt:	$(PaPo_loci)
+	python basicFsaInfoPaPo.py $^ | rawk rep $(niter) > $@
 
 ##
 # list = [] <-:: file (locus exon1 exon1...) <-:: check  <-:: gff + pos correct
@@ -179,8 +266,11 @@ $(SIM)/Pa_%AllBasicFsaInfo.txt:	$(Pa_loci)
 $(SIM)/Pa_%SynBasicFsaInfo.txt:	$(Pa_loci)
 	python basicSynFsaInfo.py -e $(NXT)/Pa_exons.txt $^ | rawk rep $(niter) > $@
 
-$(SIM)/PaPo_%BasicFsaInfo.txt:	$(PaPo_loci)
-	python basicFsaInfo.py $^ | rawk rep $(niter) > $@
+$(SIM)/PaPo_Iso_%BasicFsaInfo.txt:	$(NXT)/PaPo_%.fsa
+	python basicFsaInfoPaPo.py $^ | rawk rep $(niter) > $@
+
+$(SIM)/PaPo_IM_%BasicFsaInfo.txt:	$(NXT)/PaPo_%.fsa
+	python basicFsaInfoPaPo.py $^ | rawk rep $(niter) > $@
 
 ### obovata ###
 
@@ -195,9 +285,31 @@ $(SIM)/PaPo_%BasicFsaInfo.txt:	$(PaPo_loci)
 # PaPo_can046.fsa - nothing aligned
 
 .PHONY:	callSNPs
-callSNPs:	$(Pa_loci) $(PaPo_loci) $(NXT)/inc_loci.txt 
+callSNPs:	$(Pa_loci) $(PaPo_loci) $(NXT)/inc_loci.txt $(NXT)/blast_Pa.txt $(NXT)/match_Pa.fsa $(NXT)/match_Ref.fsa
 
 #########
+
+$(NXT)/blast_Pa.txt:	$(blast_Pa_loci)
+	cat $^ > $@
+
+$(NXT)/match_Pa.fsa:	$(match_Pa_loci)
+	cat $^ > $@
+
+$(NXT)/match_Ref.fsa:	$(match_Ref_loci)
+	cat $^ > $@
+
+$(NXT)/match_Pa_%.fsa:	$(NXT)/first_Pa_%.fsa
+	blastn -query $^ -db data/reference/PabiesGenome_REF.fsa -outfmt '10 qseqid sseqid qstart qend sstart send evalue bitscore score length pindent nident mismatch position gapopen gaps qseq sseq' | head -n 1 | awk ' { split($$0,a,","); split(a[1],b,"_"); print ">",b[2]"\n"a[15]  } ' | fold -w 70 > $@
+
+$(NXT)/match_Ref_%.fsa:	$(NXT)/first_Pa_%.fsa
+	blastn -query $^ -db data/reference/PabiesGenome_REF.fsa -outfmt '10 qseqid sseqid qstart qend sstart send evalue bitscore score length pindent nident mismatch position gapopen gaps qseq sseq' | head -1 | awk ' { split($$0,a,","); print ">",substr(a[2],5),"\n"a[16] } ' | fold -w 70 > $@
+
+$(NXT)/blast_Pa_%.txt:	$(NXT)/first_Pa_%.fsa
+	blastn -query $^ -db data/reference/PabiesGenome_REF.fsa -outfmt '10 qseqid sseqid qstart qend sstart send evalue bitscore score length pindent nident mismatch position gapopen gaps sseq' | head -n 1 | awk ' { split($$0,a,","); split(a[1],b,"_"); print b[2],substr(a[2],5),a[3],a[4],a[5],a[6]  } ' > $@
+
+
+$(NXT)/first_Pa_%.fsa:	$(NXT)/Pa_%.fsa
+	python firstSeq.py $^ > $@
 
 # Cat and align Pa and Po alignments
 $(NXT)/PaPo_%.fsa:	$(NXT)/Pa_%.fsa $(NXT)/Po_%.fsa
@@ -211,10 +323,18 @@ $(NXT)/Po_%.fsa:	$(NXT)/tmpPo_%.fsa
 $(NXT)/tmpPo_%.fsa:	$(NXT)/raw_Po/Po_%.fsa
 	nameFastaIDs -i $^ -p Po_$*_ > $@
 
+
+$(NXT)/Pa_%.fsa:	$(NXT)/tmpPa_%.fsa
+	python rcFsa.py $(NXT)/rc_Pa_loci.txt $^ > $@
+
+
 $(NXT)/inc_loci.txt:	$(NXT)/pavy2012_A.vcf
 	ls -1 $(NXT)/Pa_can*.fsa | awk ' { print substr($$1,16,6) } ' > $@
 
-$(Pa_loci):	$(NXT)/pavy2012_A.vcf.intermediate
+
+$(NXT)/tmpPa_%.fsa:	$(NXT)/pavy2012_A.vcf.intermediate
+	echo $@
+
 .INTERMEDIATE:	$(NXT)/pavy2012_A.vcf.intermediate
 
 # Assess quality and print good sites to fasta format. The 
